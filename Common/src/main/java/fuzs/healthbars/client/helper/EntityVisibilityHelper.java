@@ -31,7 +31,7 @@ public class EntityVisibilityHelper {
     public static boolean isEntityVisible(Level level, LivingEntity livingEntity, Player player, float partialTick, EntityRenderDispatcher entityRenderDispatcher, boolean mustBePicked) {
         if (mustBePicked && livingEntity != PickEntityHandler.getCrosshairPickEntity()) {
             return false;
-        } else if (!shouldShowName(livingEntity)) {
+        } else if (!isVisibleToPlayer(livingEntity, player)) {
             // run this earlier than vanilla to avoid raytracing if not necessary
             return false;
         } else {
