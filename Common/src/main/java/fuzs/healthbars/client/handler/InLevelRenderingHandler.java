@@ -2,6 +2,7 @@ package fuzs.healthbars.client.handler;
 
 import com.mojang.blaze3d.vertex.PoseStack;
 import fuzs.healthbars.HealthBars;
+import fuzs.healthbars.client.compat.VoiceChatCompat;
 import fuzs.healthbars.client.gui.GraphicsComponent;
 import fuzs.healthbars.client.helper.*;
 import fuzs.healthbars.client.renderer.ModRenderType;
@@ -48,22 +49,35 @@ public class InLevelRenderingHandler {
     }
 
     public static void onExtractRenderState(Entity entity, EntityRenderState renderState, float partialTick) {
+        boolean barRendered = false;
         if (entity instanceof LivingEntity livingEntity && canBarRender(livingEntity, partialTick)) {
             HealthTracker healthTracker = HealthTracker.getHealthTracker(livingEntity, false);
             if (healthTracker != null) {
-                RenderPropertyKey.set(renderState,
-                        HEALTH_TRACKER_PROPERTY,
-                        HealthTrackerRenderState.extractRenderState(healthTracker,
-                                livingEntity,
-                                partialTick,
-                                HealthBars.CONFIG.get(ClientConfig.class).level.barColors));
+                ClientConfig.Level config = HealthBars.CONFIG.get(ClientConfig.class).level;
+                HealthTrackerRenderState healthTrackerRenderState = HealthTrackerRenderState.extractRenderState(
+                        healthTracker,
+                        livingEntity,
+                        partialTick,
+                        config.barColors);
+                RenderPropertyKey.set(renderState, HEALTH_TRACKER_PROPERTY, healthTrackerRenderState);
                 if (renderState.nameTag == null) {
                     // we must force the name tag to render, as the name tag render event does not run unless this is set
                     renderState.nameTag = CommonComponents.EMPTY;
                     renderState.nameTagAttachment = entity.getAttachments()
                             .getNullable(EntityAttachment.NAME_TAG, 0, entity.getViewYRot(partialTick));
                 }
+                // publish the bar geometry so other mods (e.g. Simple Voice Chat) can align their own
+                // name-tag overlays next to the health bar instead of the (possibly hidden) name plate
+                int barWidth = HealthBarHelper.getBarWidth(config, healthTrackerRenderState);
+                int heightOffset = getHeightOffset(config, renderState.nameTag);
+                float renderScale = getRenderScale(renderState.distanceToCameraSq, Minecraft.getInstance().player);
+                VoiceChatCompat.putBar(entity.getId(), barWidth, heightOffset, renderScale);
+                barRendered = true;
             }
+        }
+
+        if (!barRendered) {
+            VoiceChatCompat.putNoBar(entity.getId());
         }
     }
 
@@ -108,11 +122,7 @@ public class InLevelRenderingHandler {
             // x and z are flipped as of 1.21
             poseStack.scale(0.025F * renderScale, -0.025F * renderScale, 0.025F * renderScale);
 
-            int heightOffset = "deadmau5".equals(component.getString()) ? -13 : -3;
-            if (!config.renderTitleComponent && component != CommonComponents.EMPTY) {
-                heightOffset -= 13;
-            }
-            heightOffset += config.offsetHeight;
+            int heightOffset = getHeightOffset(config, component);
             int packedLightForRendering = config.fullBrightness ? GraphicsComponent.PACKED_LIGHT : packedLight;
             GraphicsComponent graphicsComponent = new GraphicsComponent.Level(poseStack, bufferSource);
 
@@ -148,6 +158,15 @@ public class InLevelRenderingHandler {
         }
 
         return EventResult.PASS;
+    }
+
+    private static int getHeightOffset(ClientConfig.Level config, Component component) {
+        int heightOffset = "deadmau5".equals(component.getString()) ? -13 : -3;
+        if (!config.renderTitleComponent && component != CommonComponents.EMPTY) {
+            heightOffset -= 13;
+        }
+        heightOffset += config.offsetHeight;
+        return heightOffset;
     }
 
     private static float getRenderScale(double distanceToCameraSq, Player player) {
@@ -188,6 +207,8 @@ public class InLevelRenderingHandler {
     }
 
     public static void onRenderLevel(LevelRenderer levelRenderer, Camera camera, GameRenderer gameRenderer, DeltaTracker deltaTracker, PoseStack poseStack, Frustum frustum, ClientLevel clientLevel) {
+        // advance the shared frame counter so stale per-entity bar geometry expires
+        VoiceChatCompat.nextFrame();
         MultiBufferSource.BufferSource bufferSource = gameRenderer.getMinecraft().renderBuffers().bufferSource();
         // manually call BufferSource::endBatch, otherwise this is called very often and causes extreme lag
         bufferSource.endBatch(ModRenderType.textGuiSheet());
