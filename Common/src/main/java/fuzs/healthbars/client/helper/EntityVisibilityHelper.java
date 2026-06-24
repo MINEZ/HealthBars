@@ -54,8 +54,7 @@ public class EntityVisibilityHelper {
         Minecraft minecraft = Minecraft.getInstance();
         LocalPlayer player = minecraft.player;
         boolean isVisible = isVisibleToPlayer(entity, player);
-        return Minecraft.renderNames() && entity != minecraft.getCameraEntity() && isVisible
-                && !entity.isVehicle();
+        return Minecraft.renderNames() && entity != minecraft.getCameraEntity() && isVisible;
     }
 
     private static boolean isVisibleToPlayer(LivingEntity entity, Player player) {

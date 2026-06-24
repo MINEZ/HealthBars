@@ -60,11 +60,15 @@ public class InLevelRenderingHandler {
                         partialTick,
                         config.barColors);
                 RenderPropertyKey.set(renderState, HEALTH_TRACKER_PROPERTY, healthTrackerRenderState);
+                // 实体被骑乘时它自己的名牌位置会被埋在骑乘堆叠里，
+                // 因此把血条锚点挪到最顶端乘客的名牌处（原版通常会隐藏被骑乘实体的名牌）
+                Vec3 nameTagAttachment = getNameTagAttachment(entity, partialTick);
                 if (renderState.nameTag == null) {
                     // we must force the name tag to render, as the name tag render event does not run unless this is set
                     renderState.nameTag = CommonComponents.EMPTY;
-                    renderState.nameTagAttachment = entity.getAttachments()
-                            .getNullable(EntityAttachment.NAME_TAG, 0, entity.getViewYRot(partialTick));
+                    renderState.nameTagAttachment = nameTagAttachment;
+                } else if (entity.isVehicle() && nameTagAttachment != null) {
+                    renderState.nameTagAttachment = nameTagAttachment;
                 }
                 // publish the bar geometry so other mods (e.g. Simple Voice Chat) can align their own
                 // name-tag overlays next to the health bar instead of the (possibly hidden) name plate
@@ -179,6 +183,34 @@ public class InLevelRenderingHandler {
         }
 
         return renderScale;
+    }
+
+    private static Vec3 getNameTagAttachment(Entity entity, float partialTick) {
+        Vec3 attachment = entity.getAttachments()
+                .getNullable(EntityAttachment.NAME_TAG, 0, entity.getViewYRot(partialTick));
+        // 沿骑乘链向上找到最顶端的乘客
+        Entity top = entity;
+        while (!top.getPassengers().isEmpty()) {
+            top = top.getPassengers().get(0);
+        }
+        if (top == entity || attachment == null) {
+            return attachment;
+        }
+        Vec3 topAttachment = top.getAttachments()
+                .getNullable(EntityAttachment.NAME_TAG, 0, top.getViewYRot(partialTick));
+        if (topAttachment == null) {
+            return attachment;
+        }
+        // 把最顶端乘客的名牌点换算成相对当前实体渲染原点的偏移
+        Vec3 delta = lerpPosition(top, partialTick).subtract(lerpPosition(entity, partialTick));
+        return topAttachment.add(delta);
+    }
+
+    private static Vec3 lerpPosition(Entity entity, float partialTick) {
+        return new Vec3(
+                Mth.lerp(partialTick, entity.xo, entity.getX()),
+                Mth.lerp(partialTick, entity.yo, entity.getY()),
+                Mth.lerp(partialTick, entity.zo, entity.getZ()));
     }
 
     private static void renderHealthBar(GraphicsComponent graphicsComponent, int packedLight, HealthTrackerRenderState renderState, int heightOffset, Font font, Function<ResourceLocation, RenderType> renderTypeGetter, @Nullable RenderType textBackground, int color, Font.DisplayMode fontDisplayMode) {
