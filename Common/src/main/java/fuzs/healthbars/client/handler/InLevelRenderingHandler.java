@@ -132,6 +132,9 @@ public class InLevelRenderingHandler {
             posY -= renderState.stackHeight * getStackSpacing(config, Minecraft.getInstance().font);
 
             int lightCoords = config.fullBrightness ? GraphicsLayer.PACKED_LIGHT : entityRenderState.lightCoords;
+            // only carry the entity's glowing outline onto the bar text when explicitly enabled;
+            // otherwise a glowing entity gives its health value a thick colored halo (see #glowingTextOutline)
+            int outlineColor = config.glowingTextOutline ? entityRenderState.outlineColor : 0;
             GraphicsLayer graphicsLayer = new GraphicsLayer.Level(poseStack, submitNodeCollector);
             if (config.behindWalls) {
                 submitHealthBar(graphicsLayer,
@@ -142,7 +145,7 @@ public class InLevelRenderingHandler {
                         Font.DisplayMode.SEE_THROUGH,
                         renderState.backgroundColor,
                         lightCoords,
-                        entityRenderState.outlineColor);
+                        outlineColor);
             }
 
             submitHealthBar(graphicsLayer,
@@ -153,7 +156,7 @@ public class InLevelRenderingHandler {
                     Font.DisplayMode.NORMAL,
                     config.behindWalls ? 0 : renderState.backgroundColor,
                     lightCoords,
-                    entityRenderState.outlineColor);
+                    outlineColor);
             poseStack.popPose();
             // when the component is empty, rendering has been forced by us and vanilla should not be allowed to proceed
             if (config.renderTitleComponent || component == CommonComponents.EMPTY) {

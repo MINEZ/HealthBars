@@ -156,6 +156,8 @@ public class ClientConfig implements ConfigCore {
         public boolean renderTitleComponent = true;
         @Config(description = "Always render health bars with full brightness to be most visible, ignoring local lighting conditions.")
         public boolean fullBrightness = true;
+        @Config(description = "Apply the entity's glowing outline color to the health bar text when the entity is glowing. When disabled the text keeps its normal outline, avoiding a thick colored halo over the health value.")
+        public boolean glowingTextOutline = false;
         @Config(description = "Offset in pixels on the vertical axis from default position.")
         public int heightOffset = 5;
         @Config(description = "Show health bars from mobs obstructed by walls the player cannot see through, similar to the nameplates of other players.")
