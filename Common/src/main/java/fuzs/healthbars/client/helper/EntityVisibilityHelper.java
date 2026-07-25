@@ -15,7 +15,6 @@ import net.minecraft.world.level.ClipContext;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.HitResult;
 import net.minecraft.world.phys.Vec3;
-import net.minecraft.world.scores.Team;
 
 public class EntityVisibilityHelper {
 
@@ -44,28 +43,25 @@ public class EntityVisibilityHelper {
     }
 
     /**
-     * @see net.minecraft.client.renderer.entity.LivingEntityRenderer#shouldShowName(LivingEntity, double)
+     * Originally copied from
+     * {@link net.minecraft.client.renderer.entity.LivingEntityRenderer#shouldShowName(LivingEntity, double)}.
+     * <p>
+     * The team name tag visibility branch (which would return {@code false} for a team set to
+     * {@code NEVER}, and apply the {@code HIDE_FOR_*} rules otherwise) has been intentionally
+     * removed: health bar visibility is decoupled from the entity's name plate visibility. This
+     * way hiding a player's name plate via a scoreboard team (a common server setup) no longer
+     * hides its health bar. Whether the bar shows now depends only on this mod's own config plus
+     * the baseline checks below (GUI hidden, camera entity, and invisibility).
+     * <p>
+     * The {@code !entity.isVehicle()} check is dropped as well, so a ridden entity keeps its
+     * health bar; {@link fuzs.healthbars.client.handler.InLevelRenderingHandler} moves the bar
+     * anchor up to the topmost passenger instead.
      */
     private static boolean shouldShowName(LivingEntity entity) {
         Minecraft minecraft = Minecraft.getInstance();
         LocalPlayer player = minecraft.player;
         boolean isVisible = isVisibleToPlayer(entity, player);
-        if (entity != player) {
-            Team entityTeam = entity.getTeam();
-            if (entityTeam != null) {
-                Team playerTeam = player.getTeam();
-                return switch (entityTeam.getNameTagVisibility()) {
-                    case ALWAYS -> isVisible;
-                    case NEVER -> false;
-                    case HIDE_FOR_OTHER_TEAMS -> playerTeam == null ? isVisible :
-                            entityTeam.isAlliedTo(playerTeam) && (entityTeam.canSeeFriendlyInvisibles() || isVisible);
-                    case HIDE_FOR_OWN_TEAM ->
-                            playerTeam == null ? isVisible : !entityTeam.isAlliedTo(playerTeam) && isVisible;
-                };
-            }
-        }
-
-        return Minecraft.renderNames() && entity != minecraft.getCameraEntity() && isVisible && !entity.isVehicle();
+        return Minecraft.renderNames() && entity != minecraft.getCameraEntity() && isVisible;
     }
 
     private static boolean isVisibleToPlayer(LivingEntity entity, Player player) {

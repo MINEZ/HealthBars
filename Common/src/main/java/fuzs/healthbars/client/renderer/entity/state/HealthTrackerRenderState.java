@@ -32,6 +32,18 @@ public class HealthTrackerRenderState {
     public int healthData;
     public float healthProgress;
     public int barWidth;
+    /**
+     * The entity's height within its riding stack, counted from the bottom; see
+     * {@code InLevelRenderingHandler#getStackHeight(Entity)}.
+     */
+    public int stackHeight;
+    /**
+     * Squared distance from the camera to the bar's anchor entity (the bottom of the riding
+     * stack). Used for the distance based render scale so every bar in one stack is scaled
+     * identically and stays horizontally aligned. {@code -1} means "use the entity's own
+     * {@code EntityRenderState#distanceToCameraSq}".
+     */
+    public double anchorDistanceToCameraSq = -1.0;
     public float barProgress;
     public float backgroundBarProgress;
     public BossEvent.BossBarColor barColor = BossEvent.BossBarColor.WHITE;

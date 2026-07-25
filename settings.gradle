@@ -9,7 +9,7 @@ pluginManagement {
 }
 
 include "Common"
-include "Fabric"
+//include "Fabric"
 include "NeoForge"
 //include "Forge"
 
